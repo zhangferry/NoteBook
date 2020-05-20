@@ -63,20 +63,19 @@ fi
 ```yaml
 disabled_rules: # rule identifiers to exclude from running
   - colon
-  - trailing_whitespace
-  - vertical_whitespace
-  - identifier_name
-  - line_length
-  - cyclomatic_complexity
+  - comma
+  - control_statement
 opt_in_rules: # some rules are only opt-in
   - empty_count
   # Find all the available rules by running:
   # swiftlint rules
 included: # paths to include during linting. `--path` is ignored if present.
-  - MeviiBibleRead
+  - Source
 excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Carthage
   - Pods
+  - Source/ExcludedFolder
+  - Source/ExcludedFile.swift
   - Source/*/ExcludedFile.swift # Exclude files with a wildcard
 analyzer_rules: # Rules run by `swiftlint analyze` (experimental)
   - explicit_self
@@ -100,11 +99,12 @@ file_length:
 # naming rules can set warnings/errors for min_length and max_length
 # additionally they can set excluded names
 type_name:
-  min_length: 3 # only warning
+  min_length: 4 # only warning
   max_length: # warning and error
     warning: 40
     error: 50
   excluded: iPhone # excluded via string
+  allowed_symbols: ["_"] # these are allowed in type names
 identifier_name:
   min_length: # only min_length
     error: 4 # only error
@@ -115,11 +115,28 @@ identifier_name:
 reporter: "xcode" # reporter type (xcode, json, csv, checkstyle, junit, html, emoji, sonarqube, markdown)
 ```
 
-主要的有几个配置项是，`disabled_rules`：不必执行的规则，excluded：需要跳过分析的目录。
+我们可以通过`disabled_rules`设置不想执行的规则，SwiftLint规则太多了，这个真的好用。可以用`excluded`设置我们想跳过检查的目录，Carthage、Pod、SubModule这些可以过滤掉。其他的一些像是文件长度，函数体的长度，我们可以通过设置具体的数值来调节。
 
 ### xcodebuild
 
+xcodebuild是xcode内置的编译命令，我们可以用它来编译我们的iOS项目，接下来介绍的Infer和OCLint也都是基于xcodebuild的编译产物进行分析的。
 
+它的基本用法如下：
+
+```shell
+# 不带pod的项目
+xcodebuild -target <target name> -configuration <build configuration> -sdk iphonesimulator
+# 带pod的项目
+xcodebuild -workspace <xcworkspace name> -scheme <scheme>
+```
+
+一般编译时我们还会指定编译环境，这个参数时：`-configuration <build configuration>`，configuration一般有Debug和Release两个系统提供的值。还有参数是指定模拟器环境：`-sdk iphonesimulator`，如果不加就默认指定到真机。
+
+这样下来一个完整的build命令就是这个样子：
+
+```shell
+xcodebuild -workspace "Project.xcworkspace" -scheme "Scheme" -configuration Debug -sdk iphonesimulator
+```
 
 ## Infer
 
@@ -266,7 +283,7 @@ xcpretty是一个格式化xcodebuild输出内容的脚本工具，oclint的解�
 * 将 Project 和 Targets 中 Building Settings 下的 COMPILER_INDEX_STORE_ENABLE 设置为 **NO**
 * 在 podfile 中 target 'xx' do 前面添加下面的脚本，将各个pod的编译配置也改为此选项
 
-​```ruby
+```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
@@ -280,7 +297,7 @@ end
 
 进入项目根目录，运行如下脚本：
 
-```shell
+​```shell
 $ xcodebuild -workspace ProjectName.xcworkspace -scheme ProjectScheme -configuration Debug -sdk iphonesimulator | xcpretty -r json-compilation-database -o compile_commands.json
 ```
 
