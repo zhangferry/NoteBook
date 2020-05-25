@@ -332,7 +332,7 @@ $ gem install xcpretty
 在使用OCLint之前还需要一些准备工作，需要将编译项`COMPILER_INDEX_STORE_ENABLE`设置为NO。
 
 * 将 Project 和 Targets 中 Building Settings 下的 `COMPILER_INDEX_STORE_ENABLE` 设置为 **NO**
-* 在 podfile 中 target 'target' do **前面**添加下面的脚本，将各个pod的编译配置也改为此选项
+* 在 podfile 中 **target 'target' do 前面**添加下面的脚本，将各个pod的编译配置也改为此选项
 
 ```ruby
 post_install do |installer|
@@ -384,6 +384,9 @@ OCLint跟Infer一样都是通过运行几个脚本语言进行执行的，我们
 workspace_name="WorkSpaceName.xcworkspace"
 scheme_name="SchemeName"
 
+# remove history
+rm compile_commands.json
+rm oclint_result.xml
 # clean project
 # -sdk iphonesimulator means run simulator
 xcodebuild -workspace $workspace_name -scheme $scheme_name -configuration Debug -sdk iphonesimulator clean || (echo "command failed"; exit 1);
@@ -406,6 +409,21 @@ open -a "/Applications/Safari.app" oclintReport.html
 ```
 
 
+
+`oclint-json-compilation-database`命令的几个参数说明：
+
+-e
+ 需要忽略分析的文件，这些文件的警告不会出现在报告中
+
+-rc
+ 需要覆盖的规则的阀值，这里可以自定义项目的阀值，[默认阀值](]http://docs.oclint.org/en/stable/howto/thresholds.html#mccabe76)
+
+-enable-rule
+ 支持的规则，默认是oclint提供的都支持，可以组合-disable-rule来过滤掉一些规则
+ [规则列表](http://docs.oclint.org/en/stable/rules/index.html)
+
+-disable-rule
+ 需要忽略的规则，根据项目需求设置
 
 #### 在Xcode中使用OCLint
 
@@ -442,13 +460,13 @@ oclint-json-compilation-database -e Pods -- -report-type xcode
 
 以下是对这几种静态分析方案的对比，我们可以根据需求选择适合自己的静态分析方案。
 
-|              | 支持语言           | Infer                       | OCLint               |
-| ------------ | ------------------ | --------------------------- | -------------------- |
-| 支持语言     | Swift              | C、C++、OC、Java            | C、C++、OC           |
-| 易用性       | 简单               | 较简单                      | 带编译过程的话较复杂 |
-| OCLint       | 可以               | 集成较复杂不能集成进xcode， | 可以                 |
-| 自带规则多少 | 较多，包含代码规范 | 相对较少，主要检测潜在问题  | 较多，包含代码规范   |
-| 能够扩展规则 | 可以               | 不可以                      | 可以                 |
+|                 | 支持语言           | Infer                      | OCLint               |
+| --------------- | ------------------ | -------------------------- | -------------------- |
+| 支持语言        | Swift              | C、C++、OC、Java           | C、C++、OC           |
+| 易用性          | 简单               | 较简单                     | 带编译过程的话较复杂 |
+| 能否集成进Xcode | 可以               | 不能集成进xcode            | 可以                 |
+| 自带规则多少    | 较多，包含代码规范 | 相对较少，主要检测潜在问题 | 较多，包含代码规范   |
+| 能够扩展规则    | 可以               | 不可以                     | 可以                 |
 
 
 
@@ -456,5 +474,9 @@ oclint-json-compilation-database -e Pods -- -report-type xcode
 
 [OCLint 实现 Code Review - 给你的代码提提质量](https://juejin.im/post/5ce9f477f265da1b7c60f4fe#heading-1)
 
+[Using OCLint in Xcode](http://docs.oclint.org/en/stable/guide/xcode.html)
+
 [Infer 的工作机制](https://infer.liaohuqiu.net/docs/infer-workflow.html)
+
+[LLVM & Clang 入门]([https://github.com/CYBoys/Blogs/blob/master/LLVM_Clang/LLVM%20%26%20Clang%20%E5%85%A5%E9%97%A8.md](https://github.com/CYBoys/Blogs/blob/master/LLVM_Clang/LLVM %26 Clang 入门.md))
 
