@@ -1,20 +1,20 @@
+![image-20200511230812677](https://cdn.jsdelivr.net/gh/zhangferry/Images/blog/image-20200511230812677.png)
+
 上期遗留一个问题：为什么 `rethrows` 一般用在参数中含有可以 `throws` 的方法的高阶函数中。
 
 在Swift的官方文档中对`rethrows`有以下说明：
 
 > A function or method can be declared with the `rethrows` keyword to indicate that it throws an error only if one of its function parameters throws an error. These functions and methods are known as *rethrowing functions* and *rethrowing methods*. Rethrowing functions and methods must have at least one throwing function parameter.
 
-可以说rethrows这个关键词就是针对带throws的参数而创建的，因为它要求至少有一个参数是可throw异常的才可以用它。
+返回`rethrows`的函数要求至少有一个可抛出异常的函数式参数，而有以函数作为参数的函数就叫做高阶函数。
 
-https://docs.swift.org/swift-book/ReferenceManual/Attributes.html
+## 特性修饰词
 
+在Swift语法中有很多`@`符号，这些`@`符号在Swift4之前的版本大多是兼容OC的特性，Swift4及之后则出现越来越多搭配`@`符号的新特性。以`@`开头的修饰词，在官网中叫`Attributes`，在SwiftGG的翻译中叫[特性](https://www.cnswift.org/attributes)，我感觉这一类以`@`开头修饰的词叫`特性修饰词`比较合理一点。从Swift5的发布来看（`@dynamicCallable`,`@State`），之后将会有更多的特性修饰词出现，在他们出来之前，我们有必要先了解下现有的一些特性修饰词以及它们的作用。
 
+参考：[Swift Attributes](https://docs.swift.org/swift-book/ReferenceManual/Attributes.html)
 
-这一期会介绍一些新的关键词，他们出现在一些三方库或者系统库里，了解他们我们能够体会swift的魅力。
-
-## Attributes
-
-### available
+### @available
 
 `@available`： 可用来标识计算属性、函数、类、协议、结构体、枚举等类型的生命周期。（依赖于特定的平台版本 或 Swift 版本）。它的后面一般跟至少两个参数，参数之间以逗号隔开。其中第一个参数是固定的，代表着平台和语言，可选值有以下这几个：
 
@@ -88,8 +88,6 @@ public func flatMap<ElementOfResult>(_ transform: (Element) throws -> ElementOfR
 
 它的含义是针对swift语言，该方式在swift4.1版本之后标记为过期，对应该函数的新名字为`compactMap(_:)`，如果我们在4.1之上的版本使用该函数会收到编译器的警告，即`⚠️Please use compactMap(_:) for the case where closure returns an optional value`。
 
-
-
 在Realm库里，有一个销毁NotificationToken的方法，被标记为`unavailable`：
 
 ```swift
@@ -100,8 +98,6 @@ extension RLMNotificationToken {
 ```
 
 标记为`unavailable`就不会被编译器联想到。这个主要是为升级用户的迁移做准备，从可用`stop()`的版本升上了，会红色报错，提示该方法不可用。因为有`renamed`，编译器会推荐你用`invalidate()`，点击`fix`就直接切换了。所以这两个标记参数常一起出现。
-
-
 
 ### @discardableResult
 
@@ -162,19 +158,32 @@ Swift中的`@inlinable`和C中的inline基本相同，它也在标准库的定�
 
 ###  @warn_unqualified_access
 
-给顶级函数、实例方法或者类和静态方法应用这个特性来在函数或者方法不带前置修饰使用时触发警告，比如模块名、类型名或者实例变量和常量。使用这个特性来降低同一生效范围内相同函数名造成的歧义。
+这个关键词用的较少，通过其命名我们可以推断出其大概含义：对“不合规”的访问进行警告。这是为了解决对于相同名称的函数，不同访问对象可能产生歧义的问题。
 
-比如说，Swift 标准库包含了顶级函数[min(_:_:)](https://developer.apple.com/documentation/swift/1538339-min/)和包含可比元素的序列的方法[min()](https://developer.apple.com/documentation/swift/sequence/1641174-min)。序列方法使用 warn_unqualified_access 特性声明以便于在 Sequence 扩展中避免同时使用两者出现困惑。
+比如说，Swift 标准库包含了`Array`的`min()`和包含`Sequence`的`min()`。在他们之前加上 `@warn_unqualified_access`特性声明以便在调用时告诉使用者加上限定对象。
 
 ```swift
-@warn_unqualified_access
-@inlinable public func min() -> Element?
-
-@warn_unqualified_access
-@inlinable public func max() -> Element?
+extension Array where Self.Element : Comparable {
+  @warn_unqualified_access
+	@inlinable public func min() -> Element?
+}
+extension Sequence where Self.Element : Comparable {
+  @warn_unqualified_access
+  @inlinable public func min() -> Self.Element?
+}
 ```
 
+这里有一个场景可以便于理解它的含义，我们自定义一个求`Array`中最小值的函数：
 
+```swift
+extension Array where Element: Comparable {
+    func minValue() -> Element? {
+        return min()
+    }
+}
+```
+
+我们会收到编译器的警告：`Use of 'min' treated as a reference to instance method in protocol 'Sequence', Use 'self.' to silence this warning`。它告诉我们编译器推断我们当前使用的是Sequence中的`min()`，这与我们的想法是违背的。因为有这个`@warn_unqualified_access`限定，我们能及时的发现问题，并解决问题：`self.min()`。
 
 ###  @objc
 
@@ -256,11 +265,54 @@ class ProjectTests: XCTestCase {
 
 这时测试模块就可以访问那些标记为internal或者public级别的类和成员了。
 
-## 声明修饰符
+###@frozen 和@unknown default
 
-### final static
+frozen意为冻结，是为Swift5的ABI稳定准备的一个字段，意味向编译器保证之后不会做出改变。为什么需要这么做以及这么做有什么好处，他们和ABI稳定是息息相关的，内容有点多就不放这里了，之后会单独出一篇文章介绍，这里只介绍这两个字段的含义。
 
+```swift
+@frozen public enum ComparisonResult : Int {
+    case orderedAscending = -1
+    case orderedSame = 0
+    case orderedDescending = 1
+}
 
+@frozen public struct String {}
+
+extension AVPlayerItem {
+  	public enum Status : Int {
+        case unknown = 0
+        case readyToPlay = 1
+        case failed = 2
+    }
+}
+```
+
+`ComparisonResult`这个枚举值被标记为`@frozen`即使保证之后该枚举值不会再变。注意到`String`作为结构体也被标记为`@frozen`，意为String结构体的属性及属性顺序将不再变化。其实我们常用的类型像`Int`、`Float`、`Array`、`Dictionary`、`Set`等都已被“冻结”。需要说明的是冻结仅针对`struct`和`enum`这种值类型，因为他们在编译器就确定好了内存布局。对于class类型，不存在是否冻结的概念，可以想下为什么。
+
+对于没有标记为frozen的枚举`AVPlayerItem.Status`，则认为该枚举值在之后的系统版本中可能变化。
+
+对于可能变化的枚举，我们在列出所有case的时候还需要加上对`@unknown default`的判断，这一步会有编译器检查：
+
+```swift
+switch currentItem.status {
+    case .readyToPlay:
+        /* code */
+    case .failed:
+        /* code */
+    case .unknown:
+        /* code */
+    @unknown default:
+        fatalError("not supported")
+}
+```
+
+### @State、@Binding、@ObservedObject、@EnvironmentObject
+
+这几个是SwiftUI中出现的特性修饰词，因为我对SwiftUI的了解不多，这里就不做解释了。附一篇文章供大家了解。
+
+[[译]理解 SwiftUI 里的属性装饰器@State, @Binding, @ObservedObject, @EnvironmentObject](https://juejin.im/post/5d625c01f265da03cd0a8a58)
+
+## Swift中的一些特性关键词
 
 ### lazy
 
@@ -346,36 +398,190 @@ print(incArray[0], incArray[4])
 
 ### unowned weak
 
+Swift开发过程中我们会经常跟闭包打交道，而用到闭包就不可避免的遇到循环引用问题。在Swift处理循环引用可以使用`unowned`和`weak`这两个关键词。看下面两个例子：
 
+```swift
+class Dog {
+    var name: String
+    init (name: String ) {
+        self.name = name
+    }
+    deinit {
+        print("\(name) is deinitialized")
+    }
+}
 
-编译器block
+class Bone {
+  	// weak 修饰词
+    weak var owner: Dog?
+    init(owner: Dog?) {
+        self.owner = owner
+    }
+    deinit {
+        print("bone is deinitialized" )
+    }
+}
 
+var lucky: Dog? = Dog(name: "Lucky")
+var bone: Bone? = Bone(owner: lucky!)
+lucky =  nil
+// Lucky is deinitialized
+```
 
+这里Dog和Bone是相互引用的关系，如果没有`weak var owner: Dog?`这里的weak声明，将不会打印`Lucky is deinitialized`。还有一种解决循环应用的方式是把`weak`替换为`unowned`关键词。
 
-https://docs.swift.org/swift-book/ReferenceManual/Statements.html
+* weak相当于oc里面的weak，弱引用，不会增加循环计数。主体对象释放时被weak修饰的属性也会被释放，所以weak修饰对象就是optional。
+* unowned相当于oc里面的`unsafe_unretained`，它不会增加引用计数，即使它的引用对象释放了，它仍然会保持对被已经释放了的对象的一个 "无效的" 引用，它不能是 Optional 值，也不会被指向 `nil`。如果此时为无效引用，再去尝试访问它就会crash。
 
+这两者还有一个更常用的地方是在闭包里面：
 
+```swift
+lazy var someClosure: () -> Void = { [weak self] in
+    // 被weak修饰后self为optional，这里是判断self非空的操作                                
+    guard let self = self else { retrun }
+    self.doSomethings()
+}
+```
 
-https://docs.swift.org/swift-book/ReferenceManual/Expressions.html
+这里如果是`unowned`修饰self的话，就不需要用guard做解包操作了。但是我们不能为了省略解包的操作就用`unowned`，也不能为了安全起见全部`weak`，弄清楚两者的适用场景非常重要。
 
-文字表达式
+根据苹果的建议：
 
-|   Literal    |        Type        |                            Value                             |
-| :----------: | :----------------: | :----------------------------------------------------------: |
-|   `#file`    |      `String`      |          The name of the file in which it appears.           |
-|   `#line`    |       `Int`        |             The line number on which it appears.             |
-|  `#column`   |       `Int`        |            The column number in which it begins.             |
-| `#function`  |      `String`      |       The name of the declaration in which it appears.       |
-| `#dsohandle` | `UnsafeRawPointer` | The DSO (dynamic shared object) handle in use where it appears. |
+> Define a capture in a closure as an unowned reference when the closure and the instance it captures will always refer to each other, and will always be deallocated at the same time.
 
-print函数定义
+当闭包和它捕获的实例总是相互引用，并且总是同时释放时，即相同的生命周期，我们应该用unowned，除此之外的场景就用weak。
 
+![img](https://www.uraimo.com/imgs/unownedbig.png)
 
+参考：[内存管理，WEAK 和 UNOWNED](https://swifter.tips/retain-cycle/)
 
+[Unowned 还是 Weak？生命周期和性能对比](https://swift.gg/2017/05/16/unowned-or-weak-lifetime-and-performance/)
 
+### KeyPath
 
-Key-Path 表达式
+KeyPath是键值路径，最开始是用于处理KVC和KVO问题，后来又做了更广泛的扩展。
 
+```swift
+// KVC问题，支持struct、class
+struct User {
+    let name: String
+    var age: Int
+}
 
+var user1 = User()
+user1.name = "ferry"
+user1.age = 18
+ 
+//使用KVC取值
+let path: KeyPath = \User.name
+user1[keyPath: path] = "zhang"
+let name = user1[keyPath: path]
+print(name) //zhang
 
-SwiftUI中的关键词
+// KVO的实现还是仅限于继承自NSObject的类型
+// playItem为AVPlayerItem对象
+playItem.observe(\.status, changeHandler: { (_, change) in
+    /* code */    
+})
+```
+
+这个KeyPath的定义是这样的：
+
+```swift
+public class AnyKeyPath : Hashable, _AppendKeyPath {}
+
+/// A partially type-erased key path, from a concrete root type to any
+/// resulting value type.
+public class PartialKeyPath<Root> : AnyKeyPath {}
+
+/// A key path from a specific root type to a specific resulting value type.
+public class KeyPath<Root, Value> : PartialKeyPath<Root> {}
+```
+
+定义一个`KeyPath`需要指定两个类型，根类型和对应的结果类型。对应上面示例中的path：
+
+```swift
+let path: KeyPath<User, String> = \User.name
+```
+
+根类型就是User，结果类型就是String。也可以不指定，因为编译器可以从`\User.name`推断出来。那为什么叫根类型的？可以注意到KeyPath遵循一个协议`_AppendKeyPath`，它里面定义了很多`append`的方法，KeyPath是多层可以追加的，就是如果属性是自定义的Address类型，形如：
+
+```swift
+struct Address {
+    var country: String = ""
+}
+let path: KeyPath<User, String> = \User.address.country
+```
+
+这里根类型为`User`，次级类型是`Address`，结果类型是`String`。所以`path`的类型依然是`KeyPath<User, String>`。
+
+明白了这些我们可以用KeyPath做一些扩展：
+
+```swift
+extension Sequence {
+    func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>) -> [Element] {
+        return sorted { a, b in
+            return a[keyPath: keyPath] < b[keyPath: keyPath]
+        }
+    }
+}
+// users is Array<User>
+let newUsers = users.sorted(by: \.age)
+```
+
+这个自定义`sorted`函数实现了通过传入keyPath进行升序排列功能。
+
+参考：[The power of key paths in Swift](https://www.swiftbysundell.com/articles/the-power-of-key-paths-in-swift/)
+
+### some
+
+`some`是Swift5.1新增的特性。它的用法就是修饰在一个 protocol 前面，默认场景下 protocol 是没有具体类型信息的，但是用 `some` 修饰后，编译器会让 protocol 的实例类型对外透明。
+
+可以通过一个例子理解这段话的含义，当我们尝试定义一个遵循`Equatable`协议的value时：
+
+```swift
+// Protocol 'Equatable' can only be used as a generic constraint because it has Self or associated type requirements
+var value: Equatable {
+    return 1
+}
+
+var value: Int {
+    return 1
+}
+```
+
+编译器提示我们`Equatable`只能被用来做泛型的约束，它不是一个具体的类型，这里我们需要使用一个遵循`Equatable`的具体类型（Int）进行定义。但有时我们并不想指定具体的类型，这时就可以在协议名前加上`some`，让编译器自己去推断value的类型：
+
+```swift
+var value: some Equatable {
+    return 1
+}
+```
+
+在SwiftUI里some随处可见：
+
+```swift
+struct ContentView: View {
+    var body: some View {
+        Text("Hello World")
+    }
+}
+```
+
+这里使用`some`就是因为`View`是一个协议，而不是具体类型。
+
+当我们尝试欺骗编译器，每次随机返回不同的`Equatable`类型：
+
+```swift
+var value: some Equatable {
+    if Bool.random() {
+        return 1
+    } else {
+        return "1"
+    }
+}
+```
+
+聪明的编译器是会发现的，并警告我们`Function declares an opaque return type, but the return statements in its body do not have matching underlying types`。
+
+参考：[SwiftUI 的一些初步探索 (一)](https://onevcat.com/2019/06/swift-ui-firstlook/)
