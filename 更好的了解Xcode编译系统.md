@@ -76,7 +76,43 @@ class Sparrow: Bird {
 }
 ```
 
-我们可以将这段代码转换成抽象语法树格式内容，这需要运行`xcrun swiftc -dump-ast Test.swift`。
+我们可以将这段代码转换成抽象语法树格式内容，这需要运行：
+
+```shell
+xcrun swiftc -dump-ast <filename>.Swift
+```
+
+注：最后的参数是swift文件的路径，这里是定位到了编译文件所在目录，填入内容为`Test.swift`。
+
+![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200627183014.png)
+
+抽象语法树会输出很多有趣的结果，这里只展示了部分。如果你去阅读这段输出内容，会发现一些AST背后发生的事情。下面这段代码展示了几点有意思的东西：
+
+```
+(func_decl range=[Test.swift:12:3 - line:12:16] "fly()" interface type='(Bird) -> () -> ()' access=internal
+(parameter "self")
+```
+
+注意：如上面所示，当我们创建一个函数时，swift会传递一个参数self，这就是为什么我们可以访问其他函数。
+
+```
+(class_decl range=[Test.swift:17:1 - line:20:1] "Sparrow" interface type='Sparrow.Type' access=internal non-resilient inherits: Bird
+```
+
+上面的语法树代码展示了如何实现继承关系。
 
 
 
+2、现在我们来看看在构建AST时可以执行的语义分析。语义分析负责将AST转换为格式良好、类型完全检查的AST形式，删除源代码中语义问题的警告或错误。
+
+
+
+3、下一步是SIL的生成和优化。为了在这个阶段之后得到SIL，我们可以运行：
+
+```
+xcrun swiftc -emit-silgen <filename>.swift
+```
+
+![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200627184524.png)
+
+看到这些终端输出的SIL生成内容，你可能会发出这种惊讶：“OMG😮,**@$s4Test4BirdC3flyyyF**是个什么鬼东西？” 别担心，这没你想的那么可怕，它就是一种**名称压缩**，把一些有用的信息合并（编码）成一个特定的字符串。这个编码的结果包含了类型（class/struct/enum）、module、上下文环境等等。举个例子，在`@$s4Test4BirdC3flyyyF`中，*Bird*后面的字母`C`代表着`Bird`是一个class。它其实还有很多特殊的表达方式，但这里我们不会对这一技术介绍太深入。如果你对它感兴趣，可以给在下方的评论区写出你的理解。此外我们还可以将这一类型的字符串变的更加易读
