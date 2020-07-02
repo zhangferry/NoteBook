@@ -1,6 +1,6 @@
 iOS面试中对于多线程的考察是必须的。多线程在开发中会被频繁的用到。这篇文章会梳理下多线程和GCD相关的概念和问题。
 
-我认为一套合适的iOS面试题，多线程相关内容是必须要问的。
+我认为一套合适的iOS面试题，多线程相关内容是必须要问的。因为有些GCD的API用OC看着更舒服一些，所以这期实例就都用OC语言了。
 
 
 
@@ -15,7 +15,7 @@ iOS面试中对于多线程的考察是必须的。多线程在开发中会被�
 
 任务：每次执行的一段代码，比如下载一张图片，触发一个网络请求。
 
-队列：队列是任务一个个任务的合集。
+队列：队列时用来组织任务的，我们将任务添加到队列中，系统会根据资源决定是否创建新的线程去处理队列中的任务。
 
 ### 同步，异步
 
@@ -42,6 +42,8 @@ print("end")
 //> end
 //> serial async
 ```
+
+### GCD
 
 
 
@@ -77,27 +79,63 @@ let mainQueue = DispatchQueue.main
 
 
 
+### 主线程和主队列
+
+主线程是一个线程，主队列是指主线程上的任务组织形式。
+
+主队列只会在主线程执行，但主线程上执行的不一定就是主队列，还有可能是别的同步队列。因为前说过，同步操作不会开辟新的线程，所以当你自定义一个同步的串行或者并行队列时都是还在主线程执行。
+
+判断当前是否是主线程：
+
+```objective-c
+BOOL isMainThread = [NSThread isMainThread];
+```
+
+判断当前是否在主队列上：
+
+```objective-c
+static void *mainQueueKey = "mainQueueKey";
+dispatch_queue_set_specific(dispatch_get_main_queue(), mainQueueKey, &mainQueueKey, NULL);
+BOOL isMainQueue = dispatch_get_specific(mainQueueKey));
+```
+
 ## 问题
 
 ### 代码分析
 
-**1、该段代码有什么问题**
+**1、该段代码会输出什么**
 
 ```objective-c
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+  	NSLog(@"task1");
     dispatch_queue_t mainQueue = dispatch_get_main_queue();
     dispatch_sync(mainQueue, ^{
-        NSLog(@"task1");
+        NSLog(@"task2");
     });
-    NSLog(@"finished");
+    NSLog(@"task3");
 }
 ```
 
-大部分人能答出来会carsh，因为阻塞了主线程。那为什么会阻塞呢？
+这段代码会输出`task1`，然后发生死锁，导致crash。
 
+追加问题一：为什么会死锁？
 
+分析崩溃原因还能看出来，是`EXC_BAD_INSTRUCTION`类型的crash。跳到`__DISPATCH_WAIT_FOR_QUEUE__ ()`函数的汇编界面，我们还能看到出错信息：`BUG IN CLIENT OF LIBDISPATCH: dispatch_sync called on queue already owned by current thread`。
+
+在当前线程的队列中执行同步操作会引起死锁。我们知道死锁是两个线程或者两个任务之间相互等待引起的，那这个案例中是谁跟谁相互等待了呢？网上关于这个问题确有很多误导人的答案：task2和task3相互等待，sync和task2相互等待，都是不对的分析。
+
+正确的理解应该是执行到dispatch_sync时，同步操作阻塞当前线程，需要执行block中的内容，然后才能执行后面的操作。又因为这时在主队列上
+
+引出问题二：什么情况下会发生死锁？
+
+死锁发生的原因是两个任务或者两个线程之间相互等待。那就代表上面的代码发生了两个任务相互等待的情况。
+
+* 这是一个同步队列，同步会阻塞当前线程，直到完成里面的任务`task1`才会返回，然后执行后面的代码。任务`finished`等待任务`task1`的完成。
+* 这是在主队列插入代码，队列遵循FIFO。
+
+引出问题三：如何避免死锁？这段代码应该如何修改？
 
 
 
