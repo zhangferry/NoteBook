@@ -99,6 +99,12 @@ dispatch_queue_set_specific(dispatch_get_main_queue(), mainQueueKey, &mainQueueK
 BOOL isMainQueue = dispatch_get_specific(mainQueueKey));
 ```
 
+**队列与线程的关系**
+
+队列是对任务的描述，它可以包含多个任务，这是应用层的一种描述。线程是系统级的调度单位，它是更底层的描述。一个队列（并行队列）的多个任务可能会被分配到多个线程执行。
+
+
+
 ## 问题
 
 ### 代码分析
@@ -124,7 +130,11 @@ BOOL isMainQueue = dispatch_get_specific(mainQueueKey));
 
 分析崩溃原因还能看出来，是`EXC_BAD_INSTRUCTION`类型的crash。跳到`__DISPATCH_WAIT_FOR_QUEUE__ ()`函数的汇编界面，我们还能看到出错信息：`BUG IN CLIENT OF LIBDISPATCH: dispatch_sync called on queue already owned by current thread`。
 
-在当前线程的队列中执行同步操作会引起死锁。我们知道死锁是两个线程或者两个任务之间相互等待引起的，那这个案例中是谁跟谁相互等待了呢？网上关于这个问题确有很多误导人的答案：task2和task3相互等待，sync和task2相互等待，都是不对的分析。
+在当前线程的队列中执行同步操作会引起死锁。我们知道死锁是两个线程或者两个任务之间相互等待引起的，那这个案例中是谁跟谁相互等待了呢？网上关于这个问题确有很多误导人的答案：task2和task3相互等待，sync和task2相互等待，都是不对的分析。为什么这么说呢，因为当把`task2`，`task3`的代码去掉之后，还是存在死锁问题。那怎么分析这个死锁问题呢。
+
+首先这是一个同步（sync）操作：同步操作会阻塞当前线程，直到完成任务（block）才会返回。
+
+这是在主队列：
 
 正确的理解应该是执行到dispatch_sync时，同步操作阻塞当前线程，需要执行block中的内容，然后才能执行后面的操作。又因为这时在主队列上
 
