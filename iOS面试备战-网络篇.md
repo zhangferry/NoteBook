@@ -358,3 +358,5 @@ socket位于应用层和传输层之间：
 
 
 如果有对网络方面比较熟悉的小伙伴也可以补充。
+
+![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200719185749.png)
