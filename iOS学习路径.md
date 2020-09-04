@@ -12,13 +12,47 @@
 
 本人之前是从 Object-C 开始入门 iOS，全部自我学习写项目找工作混饭吃。因为之前犯过大部分 iOS 开发者犯过的错，没有深入学习知识，没有获得长进。我决心重新在 iOS 方向深入认真的投入一次，看自己可以扎入的有多深。
 
-我开始没有关注 Swift，现在 Swift 成熟了，所以决定从头开始学习 iOS 的一切东西。后面 19 年开启 Swift，二次学习 iOS 开发，也感觉到突破了自己头顶那块天花板。我10 个月看了 10 多自己买的本书，还为业务补充了好多知识，有坚持不下去的时候，但是就想把项目上线。最后克服了困难，回过头有收获和总结，我现在爱上了看技术书籍，钻的越细越发现有趣，也想去看算法了。类似写论文一样，没有秘密，直接分析到底。目前在模块化接入 Flutter，React Native，两端开发速度不一样，某些功能由 H5 做，我们就很闲了。现在的目标差不多就是把 Flutter 玩转，基本是二次从头学习 iOS 花了 1 年时间告一段落。
+我开始没有关注 Swift，现在 Swift 成熟了，所以决定从头开始学习 iOS 的一切东西。后面 19 年开启 Swift，二次学习 iOS 开发，也感觉到突破了自己头顶那块天花板。我10个月看了10多本自己买的书，还为业务补充了好多知识，有坚持不下去的时候，但是就想把项目上线。最后克服了困难，回过头有收获和总结，我现在爱上了看技术书籍，钻的越细越发现有趣，也想去看算法了。类似写论文一样，没有秘密，直接分析到底。目前在模块化接入 Flutter，React Native，两端开发速度不一样，某些功能由 H5 做，我们就很闲了。现在的目标差不多就是把 Flutter 玩转，基本是二次从头学习 iOS 花了 1 年时间告一段落。
 
-期间啃的书，有不少是[objccn](https://objccn.io/products/ "objccn")里喵神的书。
+期间啃的书，有些是[objccn](https://objccn.io/products/ "objccn")里喵神的书，这些书对iOS开发帮助还是挺大的，其余都是些比较经典的技术书。
 
-![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200902220624.png)
+![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200903223427.png)
 
-我大概列一下这些书籍：《Swift 进阶》，《Swifter - Swift 必备 tips》，《CoreData》，这三本都是objccn里的书。《CoreData 应用开发与实践》，《Autolayout 适配》（比较老，但是唯一一本将约束布局的书籍），《精通 Git》，《精通正则表达式》，《深入浅出HTTPS：从原理到实战》。
+![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200903223459.png)
+
+这些书我都看过一遍。（以下是笔者对书籍汇总成的一个表格）
+
+| 分类           | 书名                                       |
+| -------------- | ------------------------------------------ |
+| Objective-C    | Objective-C程序设计                        |
+|                | Objective-C高级编程                        |
+|                | Effective Objective-C 2.0                  |
+| Swift          | Swift权威指南                              |
+|                | Swifter 100个Swift2 开发必备Tip            |
+|                | Swift进阶                                  |
+|                | Swift常用算法                              |
+|                | 函数式Swift                                |
+| iOS            | iOS数据库应用高级编程                      |
+|                | iOS动画核心技术与案例实战                  |
+|                | iOS Auto Layout 开发秘籍                   |
+|                | 高性能iOS应用开发                          |
+|                | iOS测试指南                                |
+|                | iOS应用逆向工程                            |
+|                | LLVM COOKBOOK 中文版                       |
+|                | AV Foundation开发秘籍                      |
+|                | Core Data 应用开发实践指南                 |
+|                | Core Data                                  |
+| 其他计算机书籍 | SQLITE权威指南                             |
+|                | 图解数据结构与算法                         |
+|                | 数据结构与算法经典问题解析（Java语言描述） |
+|                | 数据结构教程                               |
+|                | Java 9编程参考官方大全                     |
+|                | Java并发编程实战                           |
+|                | 深入理解Java虚拟机                         |
+|                | 深入理解Nginx                              |
+|                | Tomcat内核设计剖析                         |
+|                | C Primer Plus 中文版                       |
+|                | 音视频开发进阶指南                         |
 
 另外需要补充的内容还有，tomcat 源码、nginx 源码、关于 HTTP 协议后端相关的东西。很多东西，写不成书，因为本身没有多少内容，有些东西只有国外有，但是 400 块，没有翻译版本。例如关于布局，从frame-》 constriants-》 archor-》到 StackView 其实苹果也是在不断的提供解决方案，目前最好的布局方案就是 stackview + anchor + constraint，但是没有这么一本介绍这些内容的书，我也是翻边了官方文档，在各自项目中看到蛛丝马迹去思考对比的。
 
