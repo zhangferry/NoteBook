@@ -36,7 +36,7 @@ HLS在移动端使用很广泛，当前支持HLS协议的客户端有：
 
 实现HLS的一个关键步骤是上面的第四步，即索引文件和ts播放列表的组织。这里用到的就是M3U8格式。M3U8是Unicode版本的[M3U](https://zh.wikipedia.org/wiki/M3U)，8代表使用的是UTF-8编码，M3U和M3U8都是多媒体列表的文件格式。
 
-接下来我们以一条WWDC里的视频为例，看下M3U8格式是什么样子的。
+接下来我们以一条WWDC里的视频为例，看下M3U8格式是什么样子的，下文展示的并非M3U8格式所有字段，但会包含常用的字段，也足以帮助我们理解M3U8这一格式。
 
 播放页面为：https://developer.apple.com/videos/play/wwdc2019/507 ，通过Charles进行抓包，我们可以得到视频播放过程中的M3U8文件。
 ![](https://gitee.com/zhangferry/Images/raw/master/gitee/20200919163827.png)
