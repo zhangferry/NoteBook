@@ -1,10 +1,28 @@
 # Pod install之后工程发生了哪些变化
 
-未引入pod的项目是这样的
+CocoaPods是iOS开发中经常被用到的第三方库管理工具，我们有必要深入了解一下它都引入了哪些东西，以及它是如何将第三方库跟我们的项目做结合的。
 
 
 
-我们执行`pod init`创建一个Podfile模板，然后在Podfile里添加：
+## 使用pod安装三方库
+
+我们新建一个不带测试模块的名为FFDemo的Swift项目，它的目录结构是这样的
+
+```
+├── FFDemo
+│   ├── AppDelegate.swift
+│   ├── Assets.xcassets
+│   ├── Base.lproj
+│   ├── Info.plist
+│   ├── SceneDelegate.swift
+│   └── ViewController.swift
+└── FFDemo.xcodeproj
+    ├── project.pbxproj
+    ├── project.xcworkspace
+    └── xcuserdata
+```
+
+然后我们执行`pod init`创建一个Podfile模板，在里面引入这两个三方库：
 
 ```
 target 'FFDemo' do
@@ -18,19 +36,40 @@ target 'FFDemo' do
 end
 ```
 
-意为需要导入MJRefresh这个库。选这个库的目的是因为它包含资源文件。
-
-执行`pod install`之后项目变成了这样：
+成功执行`pod install`之后我们就将这两个库引入到了项目，这时项目目录变成了这样：
 
 ```
-
+├── FFDemo
+│   ├── AppDelegate.swift
+│   ├── Assets.xcassets
+│   ├── Base.lproj
+│   ├── Info.plist
+│   ├── SceneDelegate.swift
+│   └── ViewController.swift
+├── FFDemo.xcodeproj
+│   ├── project.pbxproj
+│   ├── project.xcworkspace
+│   └── xcuserdata
+├── FFDemo.xcworkspace
+│   └── contents.xcworkspacedata
+├── Podfile
+├── Podfile.lock
+└── Pods
+    ├── Alamofire
+    ├── Headers
+    ├── Local\ Podspecs
+    ├── MJRefresh
+    ├── Manifest.lock
+    ├── Moya
+    ├── Pods.xcodeproj
+    └── Target\ Support\ Files
 ```
 
-从外部目录看其多了xcworkspace、Podfile.lock、Pods等内容。
+从目录看，除了pod init引入了Podfile，其余三部分内容：FFDemo.xcworkspace、Podfile.lock、Pods目录都是由pod install之后生成的。我们下面重点讲下这三部分内容。
 
-## xcworkspace
+## xcworkspace文件
 
-xcworkspace是一个父文件件，里面包含一个文件叫`contents.xcworkspacedata`，它的内容是这样的
+该文件下包含一个叫`contents.xcworkspacedata`的文件，它的内容是这样的：
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -45,13 +84,13 @@ xcworkspace是一个父文件件，里面包含一个文件叫`contents.xcworksp
 </Workspace>
 ```
 
-一个xml格式的组织形式，在该文件内部，由<workspace>标签维护多个xcodeproj。这里除了有我们创建的FFDemo.xcodeproj还有一个新建的Pods.xcodeproj。
+使用`xml`格式将依赖包含在<workspace>标签内。
 
-
+xcworkspace是一个项目容器，当有多个project需要相互依赖时可以用xcworkspace将它们组织起来。pod在首次安装三方库时会生成一个叫`Pods.xcodeproj`的project管理三方库，然后将该project和主项目的project通过workspace进行关联。这样我们就可以在主工程里引入三方库了，而且三方库由Pods.xcodeproj统一管理，不会对我们原项目产生任何干扰。
 
 ## Podfile.lock
 
-lock文件的形式是这样的：
+Podfile.lock文件的内容是这样的：
 
 ```
 PODS:
@@ -82,9 +121,11 @@ PODFILE CHECKSUM: 073f3d6d9f03e6a76838ca3719df48ae6cc01450
 COCOAPODS: 1.9.3
 ```
 
+因为Podfile文件里可以不指定版本号，而版本信息又很重要，于是就有了Podfile.lock，它里面记录完整的版本信息和依赖关系。它的内容包含以下几大块
+
 ### PODS
 
-上面的`PODS`是指当前引用库的版本号，上面Moya出现了一个`Moya/Core`是因为Moya里包含了一个子spec叫`Core`，这里的定义由[Moya.podspec](https://github.com/Moya/Moya/blob/master/Moya.podspec)决定。
+`PODS`是指当前引用库的具体版本号，可以发现我们并没有引入Alamofire，但在PODS里确有它。这是因为Moya中依赖了它，Moya里定义了一个subspec叫Core，这是Moya/Core写法的由来。pod是通过各个库的podspec文件找到对应依赖的，这里可以简单看下Moya的部分podspeec文件内容[Moya.podspec](https://github.com/Moya/Moya/blob/master/Moya.podspec)：
 
 ```
 Pod::Spec.new do |s|
@@ -100,50 +141,66 @@ end
 
 ### DEPENDENCIES
 
-DEPENDENCIES为pod库的描述信息，这里是同Podfile里的写法的，如果我们指定了版本号，那这里也会有对应版本号`MJRefresh (~> 3.5.0)`，如果没有指定就不会显示版本号`Moya`。
-
-
+DEPENDENCIES为pod库的描述信息，这里内容是同Podfile里的写法。因为我们指定了MJRefresh的版本号，并没有指定Moya的版本号，所以这里内容也是一样的。
 
 ### SPEC REPOS
 
-这里描述的是仓库信息，安装了哪些库，是在哪个仓库安装的。
+这里描述的是仓库信息，即安装了哪些三方库，他们来自于哪个仓库。
 
-trunk代表共有仓库的名称，所有的公共pod都会安装于这个仓库。如果有私有仓库，这里还会列出私有库及其下安装的pod库。
-
-
+trunk是共有仓库的名称，它的地址是`https://github.com/CocoaPods/Specs.git`，外部使用的三方库大都来自于这里。通常我们还会依赖一些公司内部的私有库，私有库的信息也会显示在这里。
 
 ### SPEC CHECKSUM
 
-Spec的校验和是针对每个库都有一个，它对应的是对podspec文件路径求sha1，比如MJRefresh的校验和：`6afc955813966afb08305477dd7a0d9ad5e79a16`。安装MJRefresh的版本为3.5.0，它的本地podspec文件路径为：`~/.cocoapods/repos/trunk/Specs/0/f/b/MJRefresh/3.5.0/MJRefresh.podspec.json`。这个路径可以通过`pod install --verbose`查看。我们可以发现原本配置的podspec格式编程了podspec.json格式，但这个json内容其实跟podspec是一样的，只不过换了一种展示格式。
-校验和的生成是这样的：
+这里描述的是各个三方库的校验和，校验和的算法是对当前安装版本的三方库的podspec文件求SHA1。比如MJRefresh的校验和：`6afc955813966afb08305477dd7a0d9ad5e79a16`。我们安装的MJRefresh的版本为3.5.0，它本地的podspec文件路径为：`~/.cocoapods/repos/trunk/Specs/0/f/b/MJRefresh/3.5.0/MJRefresh.podspec.json`。
+
+这个路径可以通过`pod install --verbose`里的日志查看。我们对该文件内容通过openssl求sha1摘要：
 
 ```shell
 $ pod ipc spec ~/.cocoapods/repos/trunk/Specs/0/f/b/MJRefresh/3.5.0/MJRefresh.podspec.json | openssl sha1
+$ 6afc955813966afb08305477dd7a0d9ad5e79a16
 ```
 
-该命令是对json内容求sha1，所以如果改json内容有任何不同都会导致校验和不同，在不同团队直接合作的话如果出现这里的不同，需要检查对应的json内容。
+因为是对json内容求sha1，所以json内容只要发生一点变化，得出的校验和就将大不相同，而这也是校验和设计的目的：用于跟踪版本信息是否发生了变化。
+
+大家可能注意到了，控制版本信息的配置文件是podspec格式的，为什么本地文件变成了json格式？
+
+这是因为json格式兼容性更高也更容易批量处理，Spec仓库的所有库配置文件都是被转成json格式的。在我们制作私有库的时候虽然可以直接以podspec的格式推上去，但后续解析文件时pod内部还是会把它转成json格式，所以建议私有库的配置文件也转成json格式再推送。
+
+podspec转成json可以使用这个命令：
+
+```shell
+$ pod ipc spec ModuleName.podspec
+```
 
 ### PODFILE CHECKSUM
 
-这个校验和是针对podfile内容的校验和，如果podfile内容改变了，该值也会跟着改变。
+这个校验和是针对Podfile内容的校验和，如果Podfile内容改变了，该值也会跟着改变。计算方法为：
+
+```shell
+$ openssl sha1 /Users/zhangferry/Desktop/FFDemo/Podfile
+```
 
 ### COCOAPODS: 1.9.3
 
-这个代表当前使用的pod版本号，当使用不同版本
-
-
+这个代表当前使用的CocoaPod版本号。
 
 ## Pods
 
 ### Manifest.lock
 
-Manifest.lock是Podfile.lock的副本，它并没有放到跟目录而是放到了Pods目录里面。它的作用是这样的，Pods我们通常是不放到版本管理里面的，而Podfile.lock通常放到版本管理里面，这时，对于拉取代码之后是否有人修改了Podfile.lock，我们就可以比较Podfile.lock和manifest.lock进行区分。
+Manifest.lock是Podfile.lock的副本，它是在Pods目录里面。它的作用是这样的，我们通常是不把Pods文件放到版本管理里面，而把Podfile.lock放到版本管理里面。这时对于拉取代码之后是否需要更新pod，就可以通过对比本地的Manifest.lock和远程Podfile.lock是否相同即可。
 
 
 
-### Build Phases
 
-多了[CP] Check Pods Manifest.lock脚本，该脚本内容如下
+
+## Build Phases
+
+这里是设置编译阶段配置的地方，当首次pod install成功之后，这里会多几个[CP]开头的配置项（CP即CocoaPods缩写），它们都是由CocoPods安装的，他们都是脚本内容，执行顺序从上到下。
+
+#### [CP] Check Pods Manifest.lock
+
+该脚本位于较上方，如果没有Dependencies，开始编译就会执行该脚本，它的内容如下：
 
 ```shell
 diff "${PODS_PODFILE_DIR_PATH}/Podfile.lock" "${PODS_ROOT}/Manifest.lock" > /dev/null
@@ -156,17 +213,39 @@ fi
 echo "SUCCESS" > "${SCRIPT_OUTPUT_FILE_0}"
 ```
 
-这里的脚本会根据排列顺序，依次执行，该脚本执行内容为比较Podfile.lock和Manifest.lock文件是否相同，如果不同就输出错误信息：`error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.`，并退出脚本，这会导致后续项目报错，无法继续编译。
+作用是比较`Podfile.lock`和`Manifest.lock`文件是否相同，如果不同就输出错误信息：`error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.`，并执行退出，这会导致后续项目报错，无法继续编译。
 
-如果编译成功就将SUCCESS赋值给变量`SCRIPT_OUTPUT_FILE_0`。
-
-
+该错误较常见，出现于拉取远端代码，远端pod依赖于本地不一致的情况。这时我们可以根据提示，执行`pod install`命令，根据Podfile及远端Podfile.lock生成新的Manifest.lock文件。
 
 
 
-[CP] Embed Pods Frameworks
+#### [CP] Resources
+
+
+
+
+
+#### [CP] Embed Pods Frameworks
 
 该脚本是直接运行Pods-FFDemo-frameworks.sh脚本。
+
+pod如何构建。
+
+
+
+input 和 output是Xcode 10自带功能，用于指定脚本的输入输出。这是配合New Build System推出的功能，用于提升编译效率。
+
+### Targets Support Files
+
+#### modulemap
+
+
+
+#### acknowledgements
+
+
+
+#### xcconfig
 
 
 
